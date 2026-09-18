@@ -47,6 +47,7 @@ interface ChatViewProps {
   onOpenEvidence: (factId: string) => void;
   onRefreshMemories: () => void;
   factsMap: Record<string, Fact>;
+  registerExecutor?: (executor: (input: string, mode: 'query' | 'ingest', asOf?: string) => void) => void;
 }
 
 const AVAILABLE_USERS: User[] = [
@@ -79,6 +80,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onOpenEvidence,
   onRefreshMemories,
   factsMap,
+  registerExecutor,
 }) => {
   const [inputText, setInputText] = useState('');
   const [mode, setMode] = useState<'query' | 'ingest'>('query');
@@ -251,6 +253,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
     return () => clearInterval(interval);
   }, [loading]);
+
+  // Register executor for guided live demo walkthrough
+  useEffect(() => {
+    if (registerExecutor) {
+      registerExecutor((input: string, targetMode: 'query' | 'ingest', asOf?: string) => {
+        handleExecute(input, targetMode, asOf);
+      });
+    }
+  }, [registerExecutor, activeUser]);
 
   const handleExecute = async (
     overrideInput?: string, 

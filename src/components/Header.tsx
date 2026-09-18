@@ -10,7 +10,9 @@ import {
   Server, 
   RotateCcw,
   UserCheck,
-  ChevronDown
+  ChevronDown,
+  Play,
+  Sparkles
 } from 'lucide-react';
 import { User } from '../types/ledger';
 
@@ -24,6 +26,10 @@ interface HeaderProps {
   backendUrl: string;
   onOpenConnectionModal: () => void;
   onResetDatabase: () => void;
+  isDemoGuideOpen?: boolean;
+  onToggleDemoGuide?: () => void;
+  factsCount?: number;
+  disputeCount?: number;
 }
 
 const AVAILABLE_USERS: User[] = [
@@ -60,6 +66,10 @@ export const Header: React.FC<HeaderProps> = ({
   backendUrl,
   onOpenConnectionModal,
   onResetDatabase,
+  isDemoGuideOpen = false,
+  onToggleDemoGuide,
+  factsCount = 0,
+  disputeCount = 0,
 }) => {
   const [userDropdownOpen, setUserDropdownOpen] = React.useState(false);
 
@@ -81,6 +91,23 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Interactive Live Demo Guide Launcher */}
+          {onToggleDemoGuide && (
+            <button
+              id="btn-toggle-demo-guide"
+              onClick={onToggleDemoGuide}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold font-mono transition-all border ${
+                isDemoGuideOpen
+                  ? 'bg-[#0284C7] text-white border-[#38BDF8] shadow-md shadow-[#0284C7]/20'
+                  : 'bg-[#0B1728] text-[#38BDF8] border-[#0284C7]/40 hover:bg-[#0E223D] hover:border-[#38BDF8]'
+              }`}
+              title="Toggle the 6-step interactive live presentation guide"
+            >
+              <Play className={`w-3.5 h-3.5 ${isDemoGuideOpen ? 'fill-current' : 'text-[#38BDF8]'}`} />
+              <span>{isDemoGuideOpen ? 'Hide Demo Guide' : '▶ Guided Live Demo'}</span>
+            </button>
+          )}
+
           {/* Active Backend status button */}
           <button
             id="btn-backend-status"
@@ -106,7 +133,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span>
               {isMockMode
                 ? 'DEVELOPMENT ADAPTER (MOCK MODE)'
-                : `LIVE FASTAPI (${backendUrl.replace('http://', '').replace('https://', '')})`}
+                : `LIVE BACKEND (${backendUrl.replace('http://', '').replace('https://', '')})`}
             </span>
             <Server className="w-3 h-3 ml-1 opacity-70" />
           </button>
@@ -170,6 +197,11 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Clock className="w-3.5 h-3.5 text-[#34D399]" />
             <span>Timeline</span>
+            {factsCount > 0 && (
+              <span className="text-[10px] font-mono bg-[#1E2D24] text-[#34D399] px-1.5 py-0.2 rounded border border-[#059669]/30">
+                {factsCount}
+              </span>
+            )}
           </button>
 
           <button
@@ -183,6 +215,13 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <AlertTriangle className="w-3.5 h-3.5 text-[#FB7185]" />
             <span>Disputes</span>
+            {disputeCount > 0 ? (
+              <span className="text-[10px] font-mono bg-[#3D141B] text-[#FB7185] px-1.5 py-0.2 rounded border border-[#E11D48]/40 animate-pulse font-bold">
+                {disputeCount} active
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono text-[#64748B]">0</span>
+            )}
           </button>
 
           <button
@@ -208,7 +247,10 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5 text-[#F59E0B]" />
-            <span>Eval Scoreboard</span>
+            <span>Eval Suite</span>
+            <span className="text-[10px] font-mono bg-[#2C210C] text-[#FBBF24] px-1.5 py-0.2 rounded border border-[#D97706]/30">
+              9/9
+            </span>
           </button>
         </nav>
 

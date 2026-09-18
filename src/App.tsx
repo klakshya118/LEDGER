@@ -4,7 +4,7 @@
  * Master Frontend Controller strictly adhering to LEDGER Master Workplan (LOCKED v1).
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Header } from './components/Header';
 import { ChatView } from './components/ChatView';
 import { TimelineView } from './components/TimelineView';
@@ -13,6 +13,7 @@ import { WhatChangedView } from './components/WhatChangedView';
 import { EvalScoreboardView } from './components/EvalScoreboardView';
 import { WhyEvidenceDrawer } from './components/WhyEvidenceDrawer';
 import { ConnectionModal } from './components/ConnectionModal';
+import { LiveDemoWalkthrough, DemoStep } from './components/LiveDemoWalkthrough';
 import { Fact, Message, User } from './types/ledger';
 import { ledgerApi } from './api/client';
 
@@ -26,6 +27,11 @@ export default function App() {
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState<boolean>(false);
   const [connInfo, setConnInfo] = useState(ledgerApi.getConnectionStatus());
   const [notification, setNotification] = useState<{ message: string; type: 'info' | 'success' } | null>(null);
+
+  // Live Guided Demo Controller
+  const [isDemoGuideOpen, setIsDemoGuideOpen] = useState<boolean>(true);
+  const [currentDemoStep, setCurrentDemoStep] = useState<number>(1);
+  const chatExecutorRef = useRef<((input: string, mode: 'query' | 'ingest', asOf?: string) => void) | null>(null);
 
   const showNotification = (message: string, type: 'info' | 'success' = 'info') => {
     setNotification({ message, type });
@@ -67,6 +73,7 @@ export default function App() {
   const handleResetDatabase = () => {
     ledgerApi.resetStore();
     loadMemories();
+    setCurrentDemoStep(1);
     showNotification('Workspace memory store reset to baseline demo state.', 'success');
   };
 
@@ -79,12 +86,37 @@ export default function App() {
     }
   };
 
+  const handleExecuteDemoStep = (step: DemoStep) => {
+    if (step.actionType === 'query') {
+      setActiveTab('chat');
+      setTimeout(() => {
+        if (chatExecutorRef.current) {
+          chatExecutorRef.current(step.actionPayload.question, 'query', step.actionPayload.asOf);
+        }
+      }, 80);
+    } else if (step.actionType === 'ingest') {
+      setActiveTab('chat');
+      setTimeout(() => {
+        if (chatExecutorRef.current) {
+          chatExecutorRef.current(step.actionPayload.text, 'ingest');
+          setTimeout(() => loadMemories(), 600);
+        }
+      }, 80);
+    } else if (step.actionType === 'evidence') {
+      handleOpenEvidenceById(step.actionPayload.factId);
+    } else if (step.actionType === 'navigate') {
+      setActiveTab(step.actionPayload.tab);
+    }
+  };
+
   const factsMap = React.useMemo(() => {
     return facts.reduce((acc, f) => {
       acc[f.id] = f;
       return acc;
     }, {} as Record<string, Fact>);
   }, [facts]);
+
+  const disputeCount = facts.filter((f) => f.status === 'disputed').length;
 
   return (
     <div className="min-h-screen bg-[#090B0E] text-[#F1F5F9] flex flex-col selection:bg-[#38BDF8]/30 selection:text-white">
@@ -99,6 +131,20 @@ export default function App() {
         backendUrl={connInfo.backendUrl}
         onOpenConnectionModal={() => setIsConnectionModalOpen(true)}
         onResetDatabase={handleResetDatabase}
+        isDemoGuideOpen={isDemoGuideOpen}
+        onToggleDemoGuide={() => setIsDemoGuideOpen(!isDemoGuideOpen)}
+        factsCount={facts.length}
+        disputeCount={disputeCount}
+      />
+
+      {/* Interactive Live Demo Walkthrough Banner */}
+      <LiveDemoWalkthrough
+        currentStep={currentDemoStep}
+        onSetStep={setCurrentDemoStep}
+        isOpen={isDemoGuideOpen}
+        onClose={() => setIsDemoGuideOpen(false)}
+        onExecuteStep={handleExecuteDemoStep}
+        onResetDemo={handleResetDatabase}
       />
 
       {/* Floating Notification Toast */}
@@ -120,6 +166,9 @@ export default function App() {
             onOpenEvidence={handleOpenEvidenceById}
             onRefreshMemories={loadMemories}
             factsMap={factsMap}
+            registerExecutor={(fn) => {
+              chatExecutorRef.current = fn;
+            }}
           />
         )}
 

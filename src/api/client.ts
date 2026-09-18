@@ -58,8 +58,16 @@ class LedgerApiClient {
   private listeners: (() => void)[] = [];
 
   constructor() {
-    this.backendUrl = localStorage.getItem(BACKEND_URL_KEY) || 'http://localhost:8000';
-    this.forceMock = localStorage.getItem(FORCE_MOCK_KEY) !== 'false'; // default to mock if not explicitly set to live
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    this.backendUrl = localStorage.getItem(BACKEND_URL_KEY) || origin;
+    this.forceMock = localStorage.getItem(FORCE_MOCK_KEY) === 'true'; // default to LIVE backend if not forced to mock
+
+    // Automatically check live backend connectivity
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        this.testConnection().catch(() => {});
+      }, 100);
+    }
   }
 
   public subscribe(listener: () => void): () => void {
