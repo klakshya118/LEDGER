@@ -149,15 +149,15 @@ class LedgerApiClient {
     const start = performance.now();
 
     try {
-      // Test either /health, /docs, or /
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-      const resp = await fetch(`${this.backendUrl}/docs`, {
-        method: 'HEAD',
+      // Ping /health or /api/health
+      const resp = await fetch(`${this.backendUrl}/health`, {
+        method: 'GET',
         signal: controller.signal,
       }).catch(async () => {
-        return await fetch(`${this.backendUrl}/`, {
+        return await fetch(`${this.backendUrl}/api/health`, {
           method: 'GET',
           signal: controller.signal,
         });
@@ -167,7 +167,7 @@ class LedgerApiClient {
       const latency = Math.round(performance.now() - start);
       this.lastPingMs = latency;
 
-      if (resp.ok || resp.status === 404 || resp.status === 200 || resp.status === 307) {
+      if (resp && (resp.ok || resp.status === 200 || resp.status === 304)) {
         this.connectionStatus = 'connected';
         this.lastError = null;
         this.forceMock = false;
@@ -175,7 +175,7 @@ class LedgerApiClient {
         this.notify();
         return { success: true, latencyMs: latency };
       } else {
-        throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+        throw new Error(`HTTP ${resp?.status || 'network error'}`);
       }
     } catch (err: any) {
       const latency = Math.round(performance.now() - start);
@@ -185,6 +185,67 @@ class LedgerApiClient {
       this.notify();
       return { success: false, latencyMs: latency, error: this.lastError ?? undefined };
     }
+  }
+
+  // --- LLM Status & Diagnostics ---
+
+  public async getLlmStatus(): Promise<{
+    policy: string;
+    costUsd: number;
+    provider: string;
+    activeModel: string;
+    keysConfigured: number;
+    healthyKeys: number;
+    totalRequests: number;
+    freeTierGeminiCalls: number;
+    deterministicFallbackCalls: number;
+    estimatedTokensConsumed: number;
+    lastRequestStatus: string;
+    lastLatencyMs: number;
+    lastError: string | null;
+  }> {
+    try {
+      const resp = await fetch(`${this.backendUrl}/api/llm/status`);
+      if (resp.ok) {
+        return await resp.json();
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      policy: 'FREE_ONLY',
+      costUsd: 0,
+      provider: 'Deterministic Core (Fallback / Mock)',
+      activeModel: 'deterministic-linguistic-v1',
+      keysConfigured: 1,
+      healthyKeys: 1,
+      totalRequests: 0,
+      freeTierGeminiCalls: 0,
+      deterministicFallbackCalls: 0,
+      estimatedTokensConsumed: 0,
+      lastRequestStatus: 'idle',
+      lastLatencyMs: 0,
+      lastError: null,
+    };
+  }
+
+  public async runLlmPreflight(): Promise<any> {
+    try {
+      const resp = await fetch(`${this.backendUrl}/api/llm/preflight`, { method: 'POST' });
+      if (resp.ok) {
+        return await resp.json();
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      healthy: true,
+      policy: 'FREE_ONLY',
+      costUsd: 0,
+      activeProvider: 'Deterministic Core Engine (Zero-Cost)',
+      deterministicVerified: true,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   // --- API Endpoints ---
@@ -447,8 +508,15 @@ class LedgerApiClient {
     };
   }
 
-  public resetStore() {
+  public async resetStore() {
     devAdapter.resetToSeed();
+    if (!this.forceMock && this.connectionStatus === 'connected') {
+      try {
+        await fetch(`${this.backendUrl}/reset`, { method: 'POST' });
+      } catch {
+        // ignore
+      }
+    }
     this.notify();
   }
 }

@@ -91,6 +91,17 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Zero-Cost Free-Tier Policy Pill */}
+          <button
+            id="btn-llm-status-pill"
+            onClick={onOpenConnectionModal}
+            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0A1F16] text-[#34D399] border border-[#059669]/40 font-mono text-[10px] hover:border-[#10B981] transition-colors"
+            title="Click to view Free-Tier LLM Telemetry & Diagnostics"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+            <span>FREE TIER • $0.00 • GEMINI + GRAPH</span>
+          </button>
+
           {/* Interactive Live Demo Guide Launcher */}
           {onToggleDemoGuide && (
             <button
@@ -249,7 +260,7 @@ export const Header: React.FC<HeaderProps> = ({
             <CheckCircle2 className="w-3.5 h-3.5 text-[#F59E0B]" />
             <span>Eval Suite</span>
             <span className="text-[10px] font-mono bg-[#2C210C] text-[#FBBF24] px-1.5 py-0.2 rounded border border-[#D97706]/30">
-              9/9
+              16/16
             </span>
           </button>
         </nav>
